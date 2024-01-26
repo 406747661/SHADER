@@ -15448,28 +15448,78 @@ float4 MaterialExpressionDBufferTextureLookup(float2 BufferUV, int DBufferTextur
 	return float4(0, 0, 0, 1);
 }
 #line 2665 "/Engine/Generated/Material.ush"
-float4  CustomExpression0(FMaterialPixelParameters Parameters)
+float3  CustomExpression0(FMaterialPixelParameters Parameters)
 {
-    float4 O;
-    float2x2 fMatrix = {1,-1, 1, 1};
-
-    float2 U = 10.0* ( u - 0.5 * R ) / R.x;
-    U = mul(U, fMatrix) * 0.7 +5.0;
-    float2 F = frac(U);
-
-    F = min(F, 1-F);
-    float s = length( ceil(U) -5.5 );
-    float e = 2.* frac( ( t - s*0.5 ) / 4.0) - 1.0;
-    float v = frac ( 4.0* min(F.x,F.y) );
-
-    O = lerp( float4(1, 1, 1, 1),
-             float4(0.5,0.75,1,1),
-             smoothstep( -0.05, 0.0, 0.95 * (e < 0.0 ? v : 1.0 -v) - e*e)
-            + s*0.1 );
-
-    return O;
+vec3 f_o_rgb_from_o_hsl(in vec3 c)
+{
+	vec3 rgb = clamp(abs(mod(c.x+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);
+	return c.z+c.y*(rgb-0.5)*(1.-abs(2.*c.z-1.));
 }
-#line 2764 "/Engine/Generated/Material.ush"
+
+vec2 f_o_rotd(vec2 o, float n_ang){
+    return vec2(
+        cos(n_ang)*o.x - sin(n_ang)*o.y,
+        sin(n_ang)*o.x + cos(n_ang)*o.y
+    );
+}
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    fragColor = vec4(0.);
+
+    float n_t = iTime*.5;
+
+    float n_tau = 6.2831;
+    vec2 o_trn_fc_nor = (fragCoord.xy -iResolution.xy*.5)/ iResolution.y;
+
+    float b_a = float(fract(n_t* (1./2.) ) > .5);
+    float t_linear_inout =
+        (1.-b_a) * fract(n_t)
+        + b_a * (1.-fract(n_t));
+
+    float b_f = float(t_linear_inout < .5);
+    float n_easing_inout_qubic = atan(t_linear_inout);
+
+
+    vec2 o_trn_p = o_trn_fc_nor * n_easing_inout_qubic*9.;
+
+    vec2 o_trn_p_flr = floor(o_trn_p);
+    vec2 o_trn_p_frc = fract(o_trn_p);
+    vec2 o = (o_trn_p_frc-.5);
+
+    vec2 o_abs = abs(o);
+    float n_dcirc = length(o_abs);
+    float n_dsqr = max(o_abs.x, o_abs.y);
+    float n_dcntr = length(o_trn_fc_nor);
+    float n_chng = abs(fract(n_dcntr+n_t)-.5)*9.;
+
+    float n_c_linintrpl = n_chng;
+    float n_shape = (1.-n_c_linintrpl)*n_dcirc + (n_c_linintrpl*n_dsqr);
+    float n_radius = (sin(iTime)*.5+.5)*.5;
+    n_radius = .25;
+    n_shape = abs(n_shape-n_radius);
+    n_shape = pow(n_shape, 1./2.);
+    n_shape = 1.-n_shape;
+
+    fragColor = vec4(
+        n_shape
+         * ((sin(
+             vec3(
+                sin(n_chng)*.5+.5,
+                n_dcntr,
+                (sin(dot(o_trn_p,o_trn_p))*.5+.5)
+            ) + iTime
+        )*.5+.5)+.5)
+        + vec3(n_shape*1.+((sin(n_t+n_tau*.5)*.5+.5)*.2))*.01
+        ,1.
+    );
+
+
+    return;
+
+}
+}
+#line 2814 "/Engine/Generated/Material.ush"
 float3  GetMaterialNormalRaw(FPixelMaterialInputs PixelMaterialInputs)
 {
 	return PixelMaterialInputs.Normal;
@@ -15642,16 +15692,16 @@ float  GetMaterialOpacityRaw(FPixelMaterialInputs PixelMaterialInputs)
 {
 	return PixelMaterialInputs.Opacity;
 }
-#line 2954 "/Engine/Generated/Material.ush"
+#line 3004 "/Engine/Generated/Material.ush"
 float  GetMaterialOpacity(FPixelMaterialInputs PixelMaterialInputs)
 {
 
 	return saturate(GetMaterialOpacityRaw(PixelMaterialInputs));
 }
-#line 2967 "/Engine/Generated/Material.ush"
+#line 3017 "/Engine/Generated/Material.ush"
 float3 GetMaterialWorldPositionOffset(FMaterialVertexParameters Parameters)
 {
-#line 2985 "/Engine/Generated/Material.ush"
+#line 3035 "/Engine/Generated/Material.ush"
 	if ((GetPrimitiveData(Parameters).Flags &  0x1000000 ) == 0)
 	{
 		return float3(0, 0, 0);
@@ -15662,7 +15712,7 @@ float3 GetMaterialWorldPositionOffset(FMaterialVertexParameters Parameters)
 
 float3 GetMaterialPreviousWorldPositionOffset(FMaterialVertexParameters Parameters)
 {
-#line 3011 "/Engine/Generated/Material.ush"
+#line 3061 "/Engine/Generated/Material.ush"
 	if ((GetPrimitiveData(Parameters).Flags &  0x1000000 ) == 0)
 	{
 		return float3(0, 0, 0);
@@ -15708,12 +15758,12 @@ float2  GetMaterialRefraction(FPixelMaterialInputs PixelMaterialInputs)
 {
 	return PixelMaterialInputs.Refraction;
 }
-#line 3069 "/Engine/Generated/Material.ush"
+#line 3119 "/Engine/Generated/Material.ush"
 float GetMaterialPixelDepthOffset(FPixelMaterialInputs PixelMaterialInputs)
 {
 	return PixelMaterialInputs.PixelDepthOffset;
 }
-#line 3091 "/Engine/Generated/Material.ush"
+#line 3141 "/Engine/Generated/Material.ush"
 float3 TransformTangentNormalToWorld( float3x3  TangentToWorld, float3 TangentNormal)
 {
 	return normalize(float3(TransformTangentVectorToWorld(TangentToWorld, TangentNormal)));
@@ -15724,9 +15774,9 @@ float3 TransformTangentNormalToWorld( float3x3  TangentToWorld, float3 TangentNo
 float3 CalculateAnisotropyTangent(in out FMaterialPixelParameters Parameters, FPixelMaterialInputs PixelMaterialInputs)
 {
 	float3 Normal = Parameters.WorldNormal;
-#line 3109 "/Engine/Generated/Material.ush"
+#line 3159 "/Engine/Generated/Material.ush"
 	float3 Tangent = GetMaterialTangent(PixelMaterialInputs);
-#line 3115 "/Engine/Generated/Material.ush"
+#line 3165 "/Engine/Generated/Material.ush"
 	float3 BiTangent = cross(Normal, Tangent);
 	Tangent = normalize(cross(BiTangent, Normal));
 
@@ -15745,11 +15795,11 @@ void CalcPixelMaterialInputs(in out FMaterialPixelParameters Parameters, in out 
 
 
 	PixelMaterialInputs.Normal =  float3 (1.00000000,0.0f,0.0f);
-#line 3142 "/Engine/Generated/Material.ush"
+#line 3192 "/Engine/Generated/Material.ush"
 	float3 MaterialNormal = GetMaterialNormal(Parameters, PixelMaterialInputs);
-#line 3157 "/Engine/Generated/Material.ush"
+#line 3207 "/Engine/Generated/Material.ush"
 	Parameters.WorldNormal = normalize(MaterialNormal);
-#line 3166 "/Engine/Generated/Material.ush"
+#line 3216 "/Engine/Generated/Material.ush"
 	Parameters.ReflectionVector = ReflectionAboutCustomWorldNormal(Parameters, Parameters.WorldNormal, false);
 
 
@@ -15757,11 +15807,11 @@ void CalcPixelMaterialInputs(in out FMaterialPixelParameters Parameters, in out 
 
 
 
-	float4  Local0 = CustomExpression0(Parameters);
-	float4  Local1 = max(Local0,(( float4 )0.00000000));
-	float4  Local2 = PositiveClampedPow(Local1,(( float4 )0.45454544));
+	float3  Local0 = CustomExpression0(Parameters);
+	float3  Local1 = max(Local0,(( float3 )0.00000000));
+	float3  Local2 = PositiveClampedPow(Local1,(( float3 )0.45454544));
 
-	PixelMaterialInputs.EmissiveColor = Local2.xyz;
+	PixelMaterialInputs.EmissiveColor = Local2;
 	PixelMaterialInputs.Opacity = 1.00000000;
 	PixelMaterialInputs.OpacityMask = 1.00000000;
 	PixelMaterialInputs.BaseColor =  float3 (1.00000000,0.0f,0.0f);
@@ -15781,7 +15831,7 @@ void CalcPixelMaterialInputs(in out FMaterialPixelParameters Parameters, in out 
 
 
 	Parameters.WorldTangent = CalculateAnisotropyTangent(Parameters, PixelMaterialInputs);
-#line 3200 "/Engine/Generated/Material.ush"
+#line 3250 "/Engine/Generated/Material.ush"
 }
 #line 3137 "/Engine/Generated/Material.ush"
 
@@ -22838,6 +22888,6 @@ Material_Clamp_WorldGroupSettings, Material, 8, 1
 NULL, NULL, 0, 0
 #endif /*END_RESOURCE_TABLES*/
 #if 0 /*DIRECT COMPILE*/
--directcompile -format=PCD3D_SM6 -entry=MainPS -shaderPlatformName=PCD3D_SM6 -ps D:/UE_project/ue5_ShaderTest/SHADER/ShaderTest/Saved/ShaderDebugInfo/PCD3D_SM6/FMatExpressionPreview MaterialExpressionCustom_0/Default/FLocalVertexFactory/TBasePassPSFNoLightMapPolicy/0/BasePassPixelShader.usf -cflags=4096 -nocrashreports
+-directcompile -format=PCD3D_SM6 -entry=MainPS -shaderPlatformName=PCD3D_SM6 -ps D:/cxh/UE/SHADER/ShaderTest/Saved/ShaderDebugInfo/PCD3D_SM6/FMatExpressionPreview MaterialExpressionCustom_0/Default/FLocalVertexFactory/TBasePassPSFNoLightMapPolicy/0/BasePassPixelShader.usf -cflags=4096 -nocrashreports
 #endif /*DIRECT COMPILE*/
 //
